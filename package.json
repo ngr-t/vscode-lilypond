@@ -1,0 +1,124 @@
+{
+  "name": "vscode-lilypond",
+  "displayName": "LilyPond",
+  "description": "LilyPond authoring tools for VS Code.",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:lilypond",
+    "onCommand:lilypond.preview",
+    "onCommand:lilypond.preview.refreshNow",
+    "onCommand:lilypond.preview.toggleAutoRefresh"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "lilypond",
+        "aliases": [
+          "LilyPond",
+          "lilypond"
+        ],
+        "extensions": [
+          ".ly",
+          ".ily",
+          ".lyi"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "lilypond",
+        "scopeName": "source.lilypond",
+        "path": "./syntaxes/lilypond.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "lilypond.preview",
+        "title": "LilyPond: Open Preview"
+      },
+      {
+        "command": "lilypond.preview.refreshNow",
+        "title": "LilyPond: Refresh Preview Now"
+      },
+      {
+        "command": "lilypond.preview.toggleAutoRefresh",
+        "title": "LilyPond: Toggle Auto Refresh"
+      }
+    ],
+    "configuration": {
+      "title": "LilyPond",
+      "properties": {
+        "lilypond.preview.lilypondPath": {
+          "type": "string",
+          "default": "lilypond",
+          "description": "Path to the LilyPond executable used for preview rendering."
+        },
+        "lilypond.preview.renderDelayMs": {
+          "type": "number",
+          "default": 600,
+          "minimum": 100,
+          "description": "Debounce delay in milliseconds for re-rendering while typing."
+        },
+        "lilypond.preview.refreshMode": {
+          "type": "string",
+          "default": "idleAndSave",
+          "enum": [
+            "idleAndSave",
+            "saveOnly",
+            "manual",
+            "live"
+          ],
+          "enumDescriptions": [
+            "Render after typing pauses and on save.",
+            "Render only when the file is saved.",
+            "Render only when manually requested.",
+            "Render aggressively while typing."
+          ],
+          "description": "Controls when preview auto-refresh is triggered."
+        },
+        "lilypond.preview.minRenderIntervalMs": {
+          "type": "number",
+          "default": 1200,
+          "minimum": 100,
+          "description": "Minimum interval between typing-triggered renders."
+        },
+        "lilypond.preview.showUpdatingBadge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show an Updating status badge while rendering."
+        },
+        "lilypond.preview.cursorHighlightEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight the closest preview object for the active editor cursor position."
+        },
+        "lilypond.preview.autoScrollToHighlight": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scroll preview so the highlighted object remains visible."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.4.0"
+  }
+}

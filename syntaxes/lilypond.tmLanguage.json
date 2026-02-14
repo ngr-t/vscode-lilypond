@@ -1,0 +1,78 @@
+{
+  "name": "LilyPond",
+  "scopeName": "source.lilypond",
+  "fileTypes": [
+    "ly",
+    "ily",
+    "lyi"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#commands"
+    },
+    {
+      "include": "#notes"
+    },
+    {
+      "include": "#numbers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.percentage.lilypond",
+          "match": "%.*$"
+        },
+        {
+          "name": "comment.block.lilypond",
+          "begin": "%\\{",
+          "end": "%\\}"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.lilypond",
+          "begin": "\"",
+          "end": "\""
+        }
+      ]
+    },
+    "commands": {
+      "patterns": [
+        {
+          "name": "keyword.control.lilypond",
+          "match": "\\\\(relative|key|time|clef|tempo|markup|score|new|layout|midi|header|paper|transpose)\\b"
+        },
+        {
+          "name": "support.function.lilypond",
+          "match": "\\\\[A-Za-z][A-Za-z-]*"
+        }
+      ]
+    },
+    "notes": {
+      "patterns": [
+        {
+          "name": "constant.language.note.lilypond",
+          "match": "\\b[a-g](is|isis|es|eses)?[,']*\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.lilypond",
+          "match": "\\b\\d+\\.?\\b"
+        }
+      ]
+    }
+  }
+}
