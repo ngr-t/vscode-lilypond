@@ -52,6 +52,12 @@ export function getAutoScrollToHighlight(): boolean {
   return config.get<boolean>("autoScrollToHighlight", true);
 }
 
+export function getHighlightHysteresisScore(): number {
+  const config = vscode.workspace.getConfiguration("lilypond.preview");
+  const configured = config.get<number>("highlightHysteresisScore", 180);
+  return Number.isFinite(configured) ? Math.max(0, configured) : 180;
+}
+
 export function getLilypondBinaryPath(): string {
   const config = vscode.workspace.getConfiguration("lilypond.preview");
   return config.get<string>("lilypondPath")?.trim() || "lilypond";

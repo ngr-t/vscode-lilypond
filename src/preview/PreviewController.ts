@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import {
   getAutoScrollToHighlight,
   getCursorHighlightEnabled,
+  getHighlightHysteresisScore,
   getMinRenderIntervalMs,
   getRefreshMode,
   getShowUpdatingBadge,
@@ -618,7 +619,8 @@ export class PreviewController {
       filePath: cursor.filePath,
       line: cursor.line,
       column: cursor.column,
-      autoScroll: getAutoScrollToHighlight()
+      autoScroll: getAutoScrollToHighlight(),
+      hysteresisScore: getHighlightHysteresisScore()
     });
     log(`Cursor: ${cursor.filePath}:${cursor.line}:${cursor.column}`);
   }

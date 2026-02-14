@@ -1,5 +1,9 @@
+import { chooseBestAnchor, scoreAnchorCandidate } from "../sync/anchorMatch";
+
 export function getBasePreviewHtml(): string {
   const nonce = getNonce();
+  const chooseBestAnchorFn = chooseBestAnchor.toString();
+  const scoreAnchorCandidateFn = scoreAnchorCandidate.toString();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -167,6 +171,8 @@ export function getBasePreviewHtml(): string {
     </main>
 
     <script nonce="${nonce}">
+      const scoreAnchorCandidate = ${scoreAnchorCandidateFn};
+      const chooseBestAnchor = ${chooseBestAnchorFn};
       const vscodeApi = acquireVsCodeApi();
       const docTitle = document.getElementById("doc-title");
       const badge = document.getElementById("state-badge");
@@ -264,7 +270,7 @@ export function getBasePreviewHtml(): string {
         });
       }
 
-      function pickBestAnchor(cursorFilePath, line, column) {
+      function pickBestAnchor(cursorFilePath, line, column, hysteresisScore) {
         if (!pointAnchors.length) {
           return null;
         }
@@ -276,31 +282,7 @@ export function getBasePreviewHtml(): string {
         const sameLine = candidates.filter((item) => item.target.line === line);
         const pool = sameLine.length > 0 ? sameLine : candidates;
 
-        let best = null;
-        let bestScore = Number.POSITIVE_INFINITY;
-        for (const item of pool) {
-          const lineDelta = Math.abs(item.target.line - line);
-          const startCol = Number(item.target.column);
-          const endCol = Number(item.target.endColumn || item.target.column);
-          const span = Math.max(0, endCol - startCol);
-          const inRange = lineDelta === 0 && column >= startCol && column <= endCol;
-
-          let colDelta = 0;
-          if (column < startCol) {
-            colDelta = startCol - column;
-          } else if (column > endCol) {
-            colDelta = column - endCol;
-          }
-          const center = (startCol + endCol) / 2;
-          const centerDelta = Math.abs(column - center);
-          const selectionPenalty = currentSelectedAnchor === item.anchor ? -0.25 : 0;
-          const score = lineDelta * 100000 + (inRange ? 0 : 1500) + colDelta * 10 + centerDelta + span * 0.05 + selectionPenalty;
-          if (score < bestScore) {
-            bestScore = score;
-            best = item;
-          }
-        }
-        return best;
+        return chooseBestAnchor(pool, line, column, currentSelectedAnchor, hysteresisScore);
       }
 
       function highlightForCursor(payload) {
@@ -310,7 +292,13 @@ export function getBasePreviewHtml(): string {
           return;
         }
 
-        const best = pickBestAnchor(payload.filePath || "", line, column);
+        const hysteresisScore = Number(payload.hysteresisScore);
+        const best = pickBestAnchor(
+          payload.filePath || "",
+          line,
+          column,
+          Number.isFinite(hysteresisScore) ? Math.max(0, hysteresisScore) : 180
+        );
         if (!best) {
           clearSelectedAnchor();
           vscodeApi.postMessage({

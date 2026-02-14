@@ -47,6 +47,7 @@ All settings are under `lilypond.preview.*`:
 - `showUpdatingBadge`
 - `cursorHighlightEnabled`
 - `autoScrollToHighlight`
+- `highlightHysteresisScore`
 
 ## Documentation
 
