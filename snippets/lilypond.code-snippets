@@ -1,0 +1,167 @@
+{
+  "Version Statement": {
+    "prefix": "lyver",
+    "body": [
+      "\\version \"${1:2.24.4}\""
+    ],
+    "description": "Insert LilyPond version statement"
+  },
+  "Relative Block": {
+    "prefix": "lyrel",
+    "body": [
+      "\\relative ${1:c'} {",
+      "  ${0:c4 d e f}",
+      "}"
+    ],
+    "description": "Insert a relative music block"
+  },
+  "Score Block": {
+    "prefix": "lyscore",
+    "body": [
+      "\\score {",
+      "  ${1:\\new Staff \\relative c' { c4 d e f }}",
+      "  \\layout { }",
+      "  \\midi { }",
+      "}"
+    ],
+    "description": "Insert a full score block with layout and midi"
+  },
+  "New Staff": {
+    "prefix": "lystaff",
+    "body": [
+      "\\new Staff {",
+      "  ${0:c4 d e f}",
+      "}"
+    ],
+    "description": "Insert a new Staff block"
+  },
+  "New Voice": {
+    "prefix": "lyvoice",
+    "body": [
+      "\\new Voice = \"${1:voiceOne}\" {",
+      "  ${0:c4 d e f}",
+      "}"
+    ],
+    "description": "Insert a named Voice block"
+  },
+  "Chord Mode": {
+    "prefix": "lychords",
+    "body": [
+      "\\chordmode {",
+      "  ${0:c1:maj7 | f1:maj7}",
+      "}"
+    ],
+    "description": "Insert a chordmode block"
+  },
+  "Lyrics Mode": {
+    "prefix": "lylyrics",
+    "body": [
+      "\\lyricmode {",
+      "  ${0:la -- la la la}",
+      "}"
+    ],
+    "description": "Insert a lyricmode block"
+  },
+  "Add Lyrics": {
+    "prefix": "lyaddlyrics",
+    "body": [
+      "\\addlyrics {",
+      "  ${0:la -- la la la}",
+      "}"
+    ],
+    "description": "Attach lyrics to the previous voice"
+  },
+  "Header Block": {
+    "prefix": "lyheader",
+    "body": [
+      "\\header {",
+      "  title = \"${1:Title}\"",
+      "  composer = \"${2:Composer}\"",
+      "  ${0:tagline = ##f}",
+      "}"
+    ],
+    "description": "Insert a header block"
+  },
+  "Paper Block": {
+    "prefix": "lypaper",
+    "body": [
+      "\\paper {",
+      "  ${0:#(set-paper-size \"a4\")}",
+      "}"
+    ],
+    "description": "Insert a paper block"
+  },
+  "Layout Block": {
+    "prefix": "lylayout",
+    "body": [
+      "\\layout {",
+      "  ${0:indent = 0\\mm}",
+      "}"
+    ],
+    "description": "Insert a layout block"
+  },
+  "MIDI Block": {
+    "prefix": "lymidi",
+    "body": [
+      "\\midi {",
+      "  ${0:\\tempo 4 = 96}",
+      "}"
+    ],
+    "description": "Insert a midi block"
+  },
+  "Tempo Mark": {
+    "prefix": "lytempo",
+    "body": [
+      "\\tempo ${1:4} = ${0:96}"
+    ],
+    "description": "Insert a tempo mark"
+  },
+  "Time Signature": {
+    "prefix": "lytime",
+    "body": [
+      "\\time ${0:4/4}"
+    ],
+    "description": "Insert a time signature"
+  },
+  "Key Signature": {
+    "prefix": "lykey",
+    "body": [
+      "\\key ${1:c} \\${0:major}"
+    ],
+    "description": "Insert a key signature"
+  },
+  "Clef": {
+    "prefix": "lyclef",
+    "body": [
+      "\\clef ${0:treble}"
+    ],
+    "description": "Insert clef command"
+  },
+  "Repeat Volta": {
+    "prefix": "lyrepeat",
+    "body": [
+      "\\repeat volta ${1:2} {",
+      "  ${0:c4 d e f}",
+      "}"
+    ],
+    "description": "Insert volta repeat"
+  },
+  "Parallel Voices": {
+    "prefix": "lyparallel",
+    "body": [
+      "<<",
+      "  { ${1:c4 d e f} }",
+      "  \\\\",
+      "  { ${0:g4 a b c} }",
+      ">>"
+    ],
+    "description": "Insert parallel voice construct"
+  },
+  "Include File": {
+    "prefix": "lyinclude",
+    "body": [
+      "\\include \"${0:common.ily}\""
+    ],
+    "description": "Insert include directive"
+  }
+}

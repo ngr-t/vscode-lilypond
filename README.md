@@ -55,3 +55,4 @@ All settings are under `lilypond.preview.*`:
 - Development workflow: `docs/development.md`
 - Troubleshooting: `docs/troubleshooting.md`
 - Roadmap and backlog: `docs/roadmap.md`
+- Snippets reference: `docs/snippets.md`

@@ -42,6 +42,12 @@
         "path": "./syntaxes/lilypond.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "lilypond",
+        "path": "./snippets/lilypond.code-snippets"
+      }
+    ],
     "commands": [
       {
         "command": "lilypond.preview",
