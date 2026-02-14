@@ -32,6 +32,7 @@
 - Current regression tests live in `test/`.
 - `npm test` compiles TypeScript then runs Node test runner against `test/**/*.test.js`.
 - Existing tests focus on `textedit://` parse/rewrite logic to prevent navigation regressions.
+- Matching and diagnostics parsers are also regression-tested.
 
 ## Logging
 

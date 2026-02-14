@@ -9,6 +9,9 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - Click in preview to jump to source location
 - Move cursor in source to highlight corresponding preview object
 - Configurable preview refresh behavior (`idleAndSave`, `saveOnly`, `manual`, `live`)
+- Curated command completion for common `\\` LilyPond keywords
+- Hover docs for core LilyPond commands
+- Quick fixes for selected LilyPond diagnostics (missing version, escaped-string typo, unclosed block hint)
 
 ## Requirements
 
