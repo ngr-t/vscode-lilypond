@@ -12,6 +12,7 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - Curated command completion for common `\\` LilyPond keywords
 - Hover docs for core LilyPond commands
 - Quick fixes for selected LilyPond diagnostics (missing version, escaped-string typo, unclosed block hint)
+- Root-file workflow for include-based projects (`Set Root File` / `Clear Root File`)
 
 ## Requirements
 
@@ -38,6 +39,8 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - `LilyPond: Toggle Auto Refresh`
 - `LilyPond: Next Diagnostic`
 - `LilyPond: Previous Diagnostic`
+- `LilyPond: Set Root File`
+- `LilyPond: Clear Root File`
 
 ## Settings
 

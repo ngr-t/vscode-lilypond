@@ -13,6 +13,7 @@ import {
 } from "../config/settings";
 import { log } from "../log/logger";
 import { CANCEL_GRACE_MS, LilypondRenderer, type RenderOutput } from "../render/LilypondRenderer";
+import { analyzeIncludeGraph } from "../sync/includeGraph";
 import { parseLilypondDiagnostics } from "../sync/diagnostics";
 import { parseTextEditHref } from "../sync/textEdit";
 import { getBasePreviewHtml } from "../webview/template";
@@ -41,10 +42,13 @@ export class PreviewController {
   private readonly context: vscode.ExtensionContext;
   private readonly renderer: LilypondRenderer;
   private readonly diagnosticsCollection: vscode.DiagnosticCollection;
+  private readonly includeDiagnosticsCollection: vscode.DiagnosticCollection;
   private readonly statusBarItem: vscode.StatusBarItem;
 
   private previewPanel: vscode.WebviewPanel | undefined;
   private previewDocumentUri: string | undefined;
+  private rootFilePath: string | undefined;
+  private includeWatcher: vscode.FileSystemWatcher | undefined;
   private scheduledRender: ScheduledRender | undefined;
   private inFlightRender: InFlightRender | undefined;
   private renderToken = 0;
@@ -57,23 +61,29 @@ export class PreviewController {
     this.context = context;
     this.renderer = new LilypondRenderer(context);
     this.diagnosticsCollection = vscode.languages.createDiagnosticCollection("lilypond");
+    this.includeDiagnosticsCollection = vscode.languages.createDiagnosticCollection("lilypond-includes");
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
     this.statusBarItem.command = "lilypond.preview";
     this.statusBarItem.text = "$(music) LilyPond: Idle";
     this.statusBarItem.tooltip = "Open LilyPond preview";
     this.statusBarItem.show();
-    this.context.subscriptions.push(this.diagnosticsCollection, this.statusBarItem);
+    this.rootFilePath = this.context.workspaceState.get<string>("lilypond.preview.rootFilePath");
+
+    this.context.subscriptions.push(this.diagnosticsCollection, this.includeDiagnosticsCollection, this.statusBarItem);
   }
 
   async initialize(): Promise<void> {
     await this.renderer.ensureStorageDirectories();
+    this.refreshIncludeWatcher();
+    this.updateRootStatus();
   }
 
   register(): void {
     const openPreview = vscode.commands.registerCommand("lilypond.preview", async () => {
       log("Command: lilypond.preview");
       const panel = this.ensurePreviewPanel(true);
-      const document = this.getCurrentLilyPondDocument();
+      const current = this.getCurrentLilyPondDocument();
+      const document = await this.getRenderTargetDocument(current);
 
       if (!document) {
         this.postStatus("idle", "Open a LilyPond file (.ly, .ily, .lyi) to render a preview.");
@@ -87,7 +97,8 @@ export class PreviewController {
 
     const refreshNow = vscode.commands.registerCommand("lilypond.preview.refreshNow", async () => {
       log("Command: lilypond.preview.refreshNow");
-      const document = this.getPreviewDocument();
+      const current = this.getPreviewDocument();
+      const document = await this.getRenderTargetDocument(current);
       if (!document) {
         void vscode.window.showInformationMessage("No active LilyPond document selected for preview.");
         return;
@@ -106,6 +117,33 @@ export class PreviewController {
       const target = hasWorkspace ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
       await config.update("refreshMode", nextMode, target);
       void vscode.window.showInformationMessage(`LilyPond preview refresh mode: ${nextMode}`);
+    });
+
+    const setRootFile = vscode.commands.registerCommand("lilypond.root.set", async () => {
+      const active = vscode.window.activeTextEditor?.document;
+      if (!active || !this.isLilyPondDocument(active)) {
+        void vscode.window.showInformationMessage("Open a LilyPond file and run this command again.");
+        return;
+      }
+
+      this.rootFilePath = active.fileName;
+      await this.context.workspaceState.update("lilypond.preview.rootFilePath", this.rootFilePath);
+      this.refreshIncludeWatcher();
+      this.updateRootStatus();
+      void vscode.window.showInformationMessage(`LilyPond root file set: ${path.basename(this.rootFilePath)}`);
+
+      if (this.previewPanel) {
+        this.previewDocumentUri = active.uri.toString();
+        await this.requestRender(active, "manual", true);
+      }
+    });
+
+    const clearRootFile = vscode.commands.registerCommand("lilypond.root.clear", async () => {
+      this.rootFilePath = undefined;
+      await this.context.workspaceState.update("lilypond.preview.rootFilePath", undefined);
+      this.disposeIncludeWatcher();
+      this.updateRootStatus();
+      void vscode.window.showInformationMessage("LilyPond root file cleared.");
     });
 
     const nextDiagnostic = vscode.commands.registerCommand("lilypond.diagnostic.next", async () => {
@@ -203,6 +241,8 @@ export class PreviewController {
       openPreview,
       refreshNow,
       toggleAutoRefresh,
+      setRootFile,
+      clearRootFile,
       nextDiagnostic,
       previousDiagnostic,
       onSave,
@@ -218,6 +258,7 @@ export class PreviewController {
     this.previewDocumentUri = undefined;
     this.clearScheduledRender();
     this.cancelInFlightRender();
+    this.disposeIncludeWatcher();
   }
 
   private ensurePreviewPanel(reveal: boolean): vscode.WebviewPanel {
@@ -282,6 +323,13 @@ export class PreviewController {
   }
 
   private getPreviewDocument(): vscode.TextDocument | undefined {
+    if (this.rootFilePath) {
+      const openRoot = vscode.workspace.textDocuments.find((document) => document.fileName === this.rootFilePath);
+      if (openRoot && this.isLilyPondDocument(openRoot)) {
+        return openRoot;
+      }
+    }
+
     if (this.previewDocumentUri) {
       const current = vscode.workspace.textDocuments.find((document) => document.uri.toString() === this.previewDocumentUri);
       if (current && this.isLilyPondDocument(current)) {
@@ -302,6 +350,20 @@ export class PreviewController {
     }
 
     return this.isLilyPondDocument(document) && this.previewDocumentUri === document.uri.toString();
+  }
+
+  private async getRenderTargetDocument(baseDocument: vscode.TextDocument | undefined): Promise<vscode.TextDocument | undefined> {
+    if (this.rootFilePath) {
+      try {
+        const rootUri = vscode.Uri.file(this.rootFilePath);
+        const rootDocument = await vscode.workspace.openTextDocument(rootUri);
+        return this.isLilyPondDocument(rootDocument) ? rootDocument : baseDocument;
+      } catch {
+        void vscode.window.showWarningMessage("Configured LilyPond root file could not be opened. Falling back to current file.");
+      }
+    }
+
+    return baseDocument;
   }
 
   private getCurrentLilyPondDocument(): vscode.TextDocument | undefined {
@@ -452,6 +514,7 @@ export class PreviewController {
       this.lastCompletedVersionByUri.set(uri, document.version);
       this.postUpdate(output, document.fileName);
       this.applyDiagnosticsFromOutput(document.uri, output.stderr);
+      await this.applyIncludeDiagnostics(document.fileName);
       log(`Render success: token=${token} pages=${output.pagesCount} elapsedMs=${output.elapsedMs}`);
 
       const active = vscode.window.activeTextEditor;
@@ -515,8 +578,58 @@ export class PreviewController {
   private updateStatusBar(state: "idle" | "updating" | "error", message: string): void {
     const icon = state === "updating" ? "$(sync~spin)" : state === "error" ? "$(error)" : "$(music)";
     const label = state === "updating" ? "Rendering" : state === "error" ? "Error" : "Idle";
-    this.statusBarItem.text = `${icon} LilyPond: ${label}`;
+    const rootLabel = this.rootFilePath ? ` [root: ${path.basename(this.rootFilePath)}]` : "";
+    this.statusBarItem.text = `${icon} LilyPond: ${label}${rootLabel}`;
     this.statusBarItem.tooltip = message;
+  }
+
+  private updateRootStatus(): void {
+    this.updateStatusBar("idle", this.rootFilePath ? `Root file: ${this.rootFilePath}` : "Root file disabled");
+  }
+
+  private refreshIncludeWatcher(): void {
+    this.disposeIncludeWatcher();
+    if (!this.rootFilePath) {
+      return;
+    }
+
+    const rootDir = path.dirname(this.rootFilePath);
+    const pattern = new vscode.RelativePattern(rootDir, "**/*.{ly,ily,lyi}");
+    this.includeWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+    const onChange = (uri: vscode.Uri): void => {
+      void this.handleRootRelatedFileChange(uri);
+    };
+
+    this.includeWatcher.onDidChange(onChange);
+    this.includeWatcher.onDidCreate(onChange);
+    this.includeWatcher.onDidDelete(onChange);
+    this.context.subscriptions.push(this.includeWatcher);
+  }
+
+  private disposeIncludeWatcher(): void {
+    if (!this.includeWatcher) {
+      return;
+    }
+
+    this.includeWatcher.dispose();
+    this.includeWatcher = undefined;
+  }
+
+  private async handleRootRelatedFileChange(_uri: vscode.Uri): Promise<void> {
+    if (!this.previewPanel || !this.rootFilePath) {
+      return;
+    }
+
+    try {
+      const rootDocument = await vscode.workspace.openTextDocument(vscode.Uri.file(this.rootFilePath));
+      if (this.isLilyPondDocument(rootDocument)) {
+        this.previewDocumentUri = rootDocument.uri.toString();
+        await this.requestRender(rootDocument, "save");
+      }
+    } catch {
+      // Ignore missing/invalid root file changes.
+    }
   }
 
   private applyDiagnosticsFromOutput(fallbackUri: vscode.Uri, output: string): void {
@@ -543,6 +656,32 @@ export class PreviewController {
     this.diagnosticsCollection.clear();
     for (const bucket of grouped.values()) {
       this.diagnosticsCollection.set(bucket.uri, bucket.diagnostics);
+    }
+  }
+
+  private async applyIncludeDiagnostics(rootFilePath: string): Promise<void> {
+    const graph = await analyzeIncludeGraph(rootFilePath);
+    const grouped = new Map<string, { uri: vscode.Uri; diagnostics: vscode.Diagnostic[] }>();
+
+    for (const issue of graph.issues) {
+      const uri = vscode.Uri.file(issue.filePath);
+      const key = uri.toString();
+      const bucket = grouped.get(key) ?? { uri, diagnostics: [] };
+      const line = Math.max(0, issue.line - 1);
+      const range = new vscode.Range(line, 0, line, 1);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        issue.message,
+        issue.severity === "error" ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning
+      );
+      diagnostic.source = "lilypond-include";
+      bucket.diagnostics.push(diagnostic);
+      grouped.set(key, bucket);
+    }
+
+    this.includeDiagnosticsCollection.clear();
+    for (const bucket of grouped.values()) {
+      this.includeDiagnosticsCollection.set(bucket.uri, bucket.diagnostics);
     }
   }
 

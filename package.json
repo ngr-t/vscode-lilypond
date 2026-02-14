@@ -16,7 +16,9 @@
     "onCommand:lilypond.preview.refreshNow",
     "onCommand:lilypond.preview.toggleAutoRefresh",
     "onCommand:lilypond.diagnostic.next",
-    "onCommand:lilypond.diagnostic.previous"
+    "onCommand:lilypond.diagnostic.previous",
+    "onCommand:lilypond.root.set",
+    "onCommand:lilypond.root.clear"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -68,6 +70,14 @@
       {
         "command": "lilypond.diagnostic.previous",
         "title": "LilyPond: Previous Diagnostic"
+      },
+      {
+        "command": "lilypond.root.set",
+        "title": "LilyPond: Set Root File"
+      },
+      {
+        "command": "lilypond.root.clear",
+        "title": "LilyPond: Clear Root File"
       }
     ],
     "configuration": {
