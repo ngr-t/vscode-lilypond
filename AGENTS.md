@@ -4,7 +4,7 @@ This repository contains a VS Code extension scaffold for LilyPond language supp
 
 ## Project Structure & Module Organization
 
-- Source code: `src/` (extension entrypoint and preview pipeline in `src/extension.ts`).
+- Source code: `src/` (entrypoint in `src/extension.ts`; preview/render/webview split into modules under `src/preview`, `src/render`, `src/webview`, `src/sync`, `src/config`).
 - Compiled output: `dist/` (generated JS used by VS Code via `main` in `package.json`).
 - Syntax + language config: `syntaxes/` and `language-configuration.json`.
 - Editor/debug config: `.vscode/` (launch config for Extension Development Host).
@@ -13,6 +13,7 @@ This repository contains a VS Code extension scaffold for LilyPond language supp
 
 - `npm run compile`: compile TypeScript (`src/`) into `dist/`.
 - `npm run watch`: compile in watch mode while developing.
+- `npm test`: compile and run regression tests in `test/` with Node's test runner.
 - `npm run lint`: lint TypeScript sources with ESLint.
 - `npm run package`: package the extension with `vsce package` (requires `vsce` availability).
 - Run in VS Code: use the `Run LilyPond Extension` launch config (F5) to start an Extension Development Host.
@@ -28,10 +29,10 @@ This repository contains a VS Code extension scaffold for LilyPond language supp
 
 ## Testing Guidelines
 
-No automated tests are configured yet.
+Regression tests live in `test/` and currently target compiled output in `dist/`.
 
-- If tests are added, prefer `test/` or `src/__tests__/` and document exact commands in `package.json`.
-- Add test naming conventions (`*.test.ts`) when framework is introduced.
+- Test command: `npm test`.
+- Test file naming: `*.test.js`.
 
 ## Commit & Pull Request Guidelines
 
