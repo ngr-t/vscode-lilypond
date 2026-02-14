@@ -33,6 +33,8 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - `LilyPond: Open Preview`
 - `LilyPond: Refresh Preview Now`
 - `LilyPond: Toggle Auto Refresh`
+- `LilyPond: Next Diagnostic`
+- `LilyPond: Previous Diagnostic`
 
 ## Settings
 

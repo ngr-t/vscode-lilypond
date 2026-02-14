@@ -12,6 +12,7 @@ import {
 } from "../config/settings";
 import { log } from "../log/logger";
 import { CANCEL_GRACE_MS, LilypondRenderer, type RenderOutput } from "../render/LilypondRenderer";
+import { parseLilypondDiagnostics } from "../sync/diagnostics";
 import { parseTextEditHref } from "../sync/textEdit";
 import { getBasePreviewHtml } from "../webview/template";
 
@@ -38,6 +39,8 @@ type InFlightRender = {
 export class PreviewController {
   private readonly context: vscode.ExtensionContext;
   private readonly renderer: LilypondRenderer;
+  private readonly diagnosticsCollection: vscode.DiagnosticCollection;
+  private readonly statusBarItem: vscode.StatusBarItem;
 
   private previewPanel: vscode.WebviewPanel | undefined;
   private previewDocumentUri: string | undefined;
@@ -52,6 +55,13 @@ export class PreviewController {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.renderer = new LilypondRenderer(context);
+    this.diagnosticsCollection = vscode.languages.createDiagnosticCollection("lilypond");
+    this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
+    this.statusBarItem.command = "lilypond.preview";
+    this.statusBarItem.text = "$(music) LilyPond: Idle";
+    this.statusBarItem.tooltip = "Open LilyPond preview";
+    this.statusBarItem.show();
+    this.context.subscriptions.push(this.diagnosticsCollection, this.statusBarItem);
   }
 
   async initialize(): Promise<void> {
@@ -95,6 +105,14 @@ export class PreviewController {
       const target = hasWorkspace ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
       await config.update("refreshMode", nextMode, target);
       void vscode.window.showInformationMessage(`LilyPond preview refresh mode: ${nextMode}`);
+    });
+
+    const nextDiagnostic = vscode.commands.registerCommand("lilypond.diagnostic.next", async () => {
+      await this.navigateDiagnostic(1);
+    });
+
+    const previousDiagnostic = vscode.commands.registerCommand("lilypond.diagnostic.previous", async () => {
+      await this.navigateDiagnostic(-1);
     });
 
     const onSave = vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -184,6 +202,8 @@ export class PreviewController {
       openPreview,
       refreshNow,
       toggleAutoRefresh,
+      nextDiagnostic,
+      previousDiagnostic,
       onSave,
       onType,
       onEditorChange,
@@ -430,6 +450,7 @@ export class PreviewController {
 
       this.lastCompletedVersionByUri.set(uri, document.version);
       this.postUpdate(output, document.fileName);
+      this.applyDiagnosticsFromOutput(document.uri, output.stderr);
       log(`Render success: token=${token} pages=${output.pagesCount} elapsedMs=${output.elapsedMs}`);
 
       const active = vscode.window.activeTextEditor;
@@ -447,6 +468,7 @@ export class PreviewController {
 
       const message = this.renderErrorMessage(error);
       log(`Render error: token=${token} reason=${reason} message=${message}`);
+      this.applyDiagnosticsFromOutput(document.uri, message);
       this.postStatus("error", message);
 
       if (reason === "manual" || reason === "open") {
@@ -471,6 +493,8 @@ export class PreviewController {
       command: output.command,
       stderr: output.stderr
     });
+
+    this.updateStatusBar("idle", `Rendered in ${output.elapsedMs} ms`);
   }
 
   private postStatus(state: "idle" | "updating" | "error", message: string): void {
@@ -484,6 +508,104 @@ export class PreviewController {
       message
     });
     log(`Status: ${state} | ${message}`);
+    this.updateStatusBar(state, message);
+  }
+
+  private updateStatusBar(state: "idle" | "updating" | "error", message: string): void {
+    const icon = state === "updating" ? "$(sync~spin)" : state === "error" ? "$(error)" : "$(music)";
+    const label = state === "updating" ? "Rendering" : state === "error" ? "Error" : "Idle";
+    this.statusBarItem.text = `${icon} LilyPond: ${label}`;
+    this.statusBarItem.tooltip = message;
+  }
+
+  private applyDiagnosticsFromOutput(fallbackUri: vscode.Uri, output: string): void {
+    const parsed = parseLilypondDiagnostics(output);
+    const grouped = new Map<string, { uri: vscode.Uri; diagnostics: vscode.Diagnostic[] }>();
+
+    for (const entry of parsed) {
+      const uri = this.resolveDiagnosticUri(entry.filePath, fallbackUri);
+      const key = uri.toString();
+      const bucket = grouped.get(key) ?? { uri, diagnostics: [] };
+      const line = Math.max(0, entry.line - 1);
+      const column = Math.max(0, entry.column - 1);
+      const range = new vscode.Range(line, column, line, column + 1);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        entry.message,
+        entry.severity === "error" ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning
+      );
+      diagnostic.source = "lilypond";
+      bucket.diagnostics.push(diagnostic);
+      grouped.set(key, bucket);
+    }
+
+    this.diagnosticsCollection.clear();
+    for (const bucket of grouped.values()) {
+      this.diagnosticsCollection.set(bucket.uri, bucket.diagnostics);
+    }
+  }
+
+  private resolveDiagnosticUri(filePath: string, fallbackUri: vscode.Uri): vscode.Uri {
+    if (path.isAbsolute(filePath)) {
+      return vscode.Uri.file(filePath);
+    }
+
+    return vscode.Uri.file(path.resolve(path.dirname(fallbackUri.fsPath), filePath));
+  }
+
+  private async navigateDiagnostic(direction: 1 | -1): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      void vscode.window.showInformationMessage("Open a LilyPond file to navigate diagnostics.");
+      return;
+    }
+
+    const diagnostics = [...(this.diagnosticsCollection.get(editor.document.uri) ?? [])].sort((a, b) => {
+      const lineDiff = a.range.start.line - b.range.start.line;
+      if (lineDiff !== 0) {
+        return lineDiff;
+      }
+      return a.range.start.character - b.range.start.character;
+    });
+
+    if (diagnostics.length === 0) {
+      void vscode.window.showInformationMessage("No LilyPond diagnostics for this file.");
+      return;
+    }
+
+    const current = editor.selection.active;
+    const target = direction === 1 ? this.findNextDiagnostic(diagnostics, current) : this.findPreviousDiagnostic(diagnostics, current);
+
+    const selection = new vscode.Selection(target.range.start, target.range.end);
+    editor.selection = selection;
+    editor.revealRange(target.range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  }
+
+  private findNextDiagnostic(diagnostics: vscode.Diagnostic[], current: vscode.Position): vscode.Diagnostic {
+    for (const diagnostic of diagnostics) {
+      if (
+        diagnostic.range.start.line > current.line ||
+        (diagnostic.range.start.line === current.line && diagnostic.range.start.character > current.character)
+      ) {
+        return diagnostic;
+      }
+    }
+
+    return diagnostics[0];
+  }
+
+  private findPreviousDiagnostic(diagnostics: vscode.Diagnostic[], current: vscode.Position): vscode.Diagnostic {
+    for (let index = diagnostics.length - 1; index >= 0; index -= 1) {
+      const diagnostic = diagnostics[index];
+      if (
+        diagnostic.range.start.line < current.line ||
+        (diagnostic.range.start.line === current.line && diagnostic.range.start.character < current.character)
+      ) {
+        return diagnostic;
+      }
+    }
+
+    return diagnostics[diagnostics.length - 1];
   }
 
   private postCursorPosition(cursor: { filePath: string; line: number; column: number }): void {

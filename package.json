@@ -14,7 +14,9 @@
     "onLanguage:lilypond",
     "onCommand:lilypond.preview",
     "onCommand:lilypond.preview.refreshNow",
-    "onCommand:lilypond.preview.toggleAutoRefresh"
+    "onCommand:lilypond.preview.toggleAutoRefresh",
+    "onCommand:lilypond.diagnostic.next",
+    "onCommand:lilypond.diagnostic.previous"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -52,6 +54,14 @@
       {
         "command": "lilypond.preview.toggleAutoRefresh",
         "title": "LilyPond: Toggle Auto Refresh"
+      },
+      {
+        "command": "lilypond.diagnostic.next",
+        "title": "LilyPond: Next Diagnostic"
+      },
+      {
+        "command": "lilypond.diagnostic.previous",
+        "title": "LilyPond: Previous Diagnostic"
       }
     ],
     "configuration": {
