@@ -25,6 +25,7 @@
 - Build once: `npm run compile`
 - Build watch: `npm run watch`
 - Tests: `npm test`
+- Package sanity check: `npm run package:ci`
 - Lint (requires ESLint config): `npm run lint`
 
 ## Tests
@@ -44,3 +45,7 @@ Key log events include:
 - render start/success/error
 - webview messages
 - cursor sync events
+
+## Release
+
+- See `docs/release.md` for versioning, tagging, and CI release packaging steps.

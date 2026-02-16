@@ -181,7 +181,8 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test test/**/*.test.js",
     "lint": "eslint src --ext ts",
-    "package": "vsce package"
+    "package": "vsce package",
+    "package:ci": "npx --yes @vscode/vsce package --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
