@@ -18,6 +18,9 @@
     "onCommand:lilypond.export.pdf",
     "onCommand:lilypond.export.midi",
     "onCommand:lilypond.output.openLatest",
+    "onCommand:lilypond.transpose",
+    "onCommand:lilypond.navigate.nextBlock",
+    "onCommand:lilypond.navigate.previousBlock",
     "onCommand:lilypond.preview.toggleAutoRefresh",
     "onCommand:lilypond.diagnostic.next",
     "onCommand:lilypond.diagnostic.previous",
@@ -78,6 +81,18 @@
       {
         "command": "lilypond.output.openLatest",
         "title": "LilyPond: Open Latest Artifacts"
+      },
+      {
+        "command": "lilypond.transpose",
+        "title": "LilyPond: Transpose"
+      },
+      {
+        "command": "lilypond.navigate.nextBlock",
+        "title": "LilyPond: Next Block"
+      },
+      {
+        "command": "lilypond.navigate.previousBlock",
+        "title": "LilyPond: Previous Block"
       },
       {
         "command": "lilypond.preview.toggleAutoRefresh",
