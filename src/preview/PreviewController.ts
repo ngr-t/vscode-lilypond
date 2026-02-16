@@ -1,4 +1,5 @@
 import { ChildProcessWithoutNullStreams } from "child_process";
+import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
@@ -147,6 +148,58 @@ export class PreviewController {
       }
     });
 
+    const exportMidi = vscode.commands.registerCommand("lilypond.export.midi", async () => {
+      const current = this.getPreviewDocument() ?? this.getCurrentLilyPondDocument();
+      const document = await this.getRenderTargetDocument(current);
+      if (!document) {
+        void vscode.window.showInformationMessage("Open a LilyPond file to export MIDI.");
+        return;
+      }
+
+      try {
+        this.postStatus("updating", `Exporting MIDI for ${path.basename(document.fileName)}...`);
+        const midiPath = await this.renderer.exportMidi(document);
+        this.postStatus("idle", `MIDI exported: ${path.basename(midiPath)}`);
+        await vscode.env.openExternal(vscode.Uri.file(midiPath));
+      } catch (error) {
+        const message = this.renderErrorMessage(error);
+        this.postStatus("error", message);
+        void vscode.window.showErrorMessage(
+          `LilyPond MIDI export failed: ${message}. Ensure your score has a \\\\midi block.`
+        );
+      }
+    });
+
+    const openLatestArtifacts = vscode.commands.registerCommand("lilypond.output.openLatest", async () => {
+      const current = this.getPreviewDocument() ?? this.getCurrentLilyPondDocument();
+      const document = await this.getRenderTargetDocument(current);
+      if (!document) {
+        void vscode.window.showInformationMessage("Open a LilyPond file to browse output artifacts.");
+        return;
+      }
+
+      const artifacts = await this.collectArtifacts(document.fileName);
+      if (artifacts.length === 0) {
+        void vscode.window.showInformationMessage("No output artifacts found for this score yet.");
+        return;
+      }
+
+      const picked = await vscode.window.showQuickPick(
+        artifacts.map((artifact) => ({
+          label: path.basename(artifact.path),
+          description: artifact.type,
+          detail: artifact.path
+        })),
+        { placeHolder: "Select artifact to open" }
+      );
+
+      if (!picked?.detail) {
+        return;
+      }
+
+      await vscode.env.openExternal(vscode.Uri.file(picked.detail));
+    });
+
     const toggleAutoRefresh = vscode.commands.registerCommand("lilypond.preview.toggleAutoRefresh", async () => {
       log("Command: lilypond.preview.toggleAutoRefresh");
       const config = vscode.workspace.getConfiguration("lilypond.preview");
@@ -281,6 +334,8 @@ export class PreviewController {
       refreshNow,
       renderSelection,
       exportPdf,
+      exportMidi,
+      openLatestArtifacts,
       toggleAutoRefresh,
       setRootFile,
       clearRootFile,
@@ -921,5 +976,37 @@ export class PreviewController {
     }
 
     return String(error);
+  }
+
+  private async collectArtifacts(scoreFilePath: string): Promise<Array<{ path: string; type: string; mtime: number }>> {
+    const dir = path.dirname(scoreFilePath);
+    const base = path.parse(scoreFilePath).name;
+    const entries = await fs.readdir(dir);
+    const candidates = entries.filter(
+      (name) =>
+        (name === `${base}.pdf` || name === `${base}.midi` || name === `${base}.mid`) ||
+        name.startsWith(`${base}-`) && (name.endsWith(".pdf") || name.endsWith(".midi") || name.endsWith(".mid") || name.endsWith(".svg"))
+    );
+
+    const artifacts: Array<{ path: string; type: string; mtime: number }> = [];
+    for (const name of candidates) {
+      const fullPath = path.join(dir, name);
+      try {
+        const stat = await fs.stat(fullPath);
+        if (!stat.isFile()) {
+          continue;
+        }
+        artifacts.push({
+          path: fullPath,
+          type: path.extname(name).slice(1).toUpperCase(),
+          mtime: stat.mtimeMs
+        });
+      } catch {
+        // Ignore files that disappear during scan.
+      }
+    }
+
+    artifacts.sort((a, b) => b.mtime - a.mtime);
+    return artifacts;
   }
 }

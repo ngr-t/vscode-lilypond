@@ -39,6 +39,8 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - `LilyPond: Refresh Preview Now`
 - `LilyPond: Render Selection In Preview`
 - `LilyPond: Export PDF`
+- `LilyPond: Export MIDI`
+- `LilyPond: Open Latest Artifacts`
 - `LilyPond: Toggle Auto Refresh`
 - `LilyPond: Next Diagnostic`
 - `LilyPond: Previous Diagnostic`

@@ -132,6 +132,43 @@ export class LilypondRenderer {
     return pdfPath;
   }
 
+  async exportMidi(document: vscode.TextDocument): Promise<string> {
+    const { inputPath, sourceDir, lilypondPath, fontCacheDir } = await this.prepareRenderContext(document);
+    const sourceBaseName = path.parse(document.fileName).name;
+    const outputBase = path.join(sourceDir, sourceBaseName);
+
+    await fs.writeFile(inputPath, document.getText(), "utf8");
+
+    await runLilypond(
+      {
+        token: 0,
+        lilypondPath,
+        args: ["-o", outputBase, "-I", sourceDir, inputPath],
+        cwd: sourceDir,
+        fontCacheDir,
+        uri: document.uri.toString(),
+        version: document.version
+      },
+      () => {
+        // Export flow does not use render cancellation tracking.
+      },
+      () => {
+        // Export flow does not use render cancellation tracking.
+      }
+    );
+
+    const midiPath = `${outputBase}.midi`;
+    const midPath = `${outputBase}.mid`;
+
+    try {
+      await fs.stat(midiPath);
+      return midiPath;
+    } catch {
+      await fs.stat(midPath);
+      return midPath;
+    }
+  }
+
   private async prepareRenderContext(document: vscode.TextDocument): Promise<{
     previewDir: string;
     inputPath: string;

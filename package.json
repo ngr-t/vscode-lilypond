@@ -16,6 +16,8 @@
     "onCommand:lilypond.preview.refreshNow",
     "onCommand:lilypond.preview.renderSelection",
     "onCommand:lilypond.export.pdf",
+    "onCommand:lilypond.export.midi",
+    "onCommand:lilypond.output.openLatest",
     "onCommand:lilypond.preview.toggleAutoRefresh",
     "onCommand:lilypond.diagnostic.next",
     "onCommand:lilypond.diagnostic.previous",
@@ -68,6 +70,14 @@
       {
         "command": "lilypond.export.pdf",
         "title": "LilyPond: Export PDF"
+      },
+      {
+        "command": "lilypond.export.midi",
+        "title": "LilyPond: Export MIDI"
+      },
+      {
+        "command": "lilypond.output.openLatest",
+        "title": "LilyPond: Open Latest Artifacts"
       },
       {
         "command": "lilypond.preview.toggleAutoRefresh",
