@@ -1,5 +1,4 @@
 import { ChildProcessWithoutNullStreams } from "child_process";
-import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
@@ -13,6 +12,7 @@ import {
   type RefreshMode
 } from "../config/settings";
 import { log } from "../log/logger";
+import { collectArtifacts } from "../output/artifacts";
 import { CANCEL_GRACE_MS, LilypondRenderer, type RenderOutput } from "../render/LilypondRenderer";
 import { analyzeIncludeGraph } from "../sync/includeGraph";
 import { parseLilypondDiagnostics } from "../sync/diagnostics";
@@ -39,6 +39,18 @@ type InFlightRender = {
   killTimer?: NodeJS.Timeout;
 };
 
+export type PreviewDebugState = {
+  hasPanel: boolean;
+  isPanelVisible: boolean;
+  previewDocumentUri?: string;
+  status: "idle" | "updating" | "error";
+  statusMessage: string;
+  pagesCount: number;
+  lastCursor?: { filePath: string; line: number; column: number };
+  lastPreviewDebugMessage?: string;
+  lastReveal?: { href: string; success: boolean };
+};
+
 export class PreviewController {
   private readonly context: vscode.ExtensionContext;
   private readonly renderer: LilypondRenderer;
@@ -57,6 +69,12 @@ export class PreviewController {
   private readonly canceledTokens = new Set<number>();
   private readonly lastCompletedVersionByUri = new Map<string, number>();
   private readonly lastRenderStartByUri = new Map<string, number>();
+  private debugStatus: "idle" | "updating" | "error" = "idle";
+  private debugStatusMessage = "Preview ready.";
+  private debugPagesCount = 0;
+  private debugLastCursor: { filePath: string; line: number; column: number } | undefined;
+  private debugLastPreviewMessage: string | undefined;
+  private debugLastReveal: { href: string; success: boolean } | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -178,7 +196,7 @@ export class PreviewController {
         return;
       }
 
-      const artifacts = await this.collectArtifacts(document.fileName);
+      const artifacts = await collectArtifacts(document.fileName);
       if (artifacts.length === 0) {
         void vscode.window.showInformationMessage("No output artifacts found for this score yet.");
         return;
@@ -357,6 +375,24 @@ export class PreviewController {
     this.disposeIncludeWatcher();
   }
 
+  getDebugState(): PreviewDebugState {
+    return {
+      hasPanel: Boolean(this.previewPanel),
+      isPanelVisible: Boolean(this.previewPanel?.visible),
+      previewDocumentUri: this.previewDocumentUri,
+      status: this.debugStatus,
+      statusMessage: this.debugStatusMessage,
+      pagesCount: this.debugPagesCount,
+      lastCursor: this.debugLastCursor,
+      lastPreviewDebugMessage: this.debugLastPreviewMessage,
+      lastReveal: this.debugLastReveal
+    };
+  }
+
+  async debugRevealTargetFromPreview(href: string): Promise<void> {
+    await this.revealTargetFromPreview(href);
+  }
+
   private ensurePreviewPanel(reveal: boolean): vscode.WebviewPanel {
     if (this.previewPanel) {
       if (reveal) {
@@ -385,6 +421,7 @@ export class PreviewController {
       }
 
       if (payload.type === "debug" && typeof payload.message === "string") {
+        this.debugLastPreviewMessage = payload.message;
         log(`Webview: ${payload.message}`);
         return;
       }
@@ -669,6 +706,9 @@ export class PreviewController {
       command: output.command,
       stderr: output.stderr
     });
+    this.debugStatus = "idle";
+    this.debugStatusMessage = `${statusPrefix ? `${statusPrefix}: ` : ""}Rendered ${output.pagesCount === 1 ? "1 page" : `${output.pagesCount} pages`} in ${output.elapsedMs} ms`;
+    this.debugPagesCount = output.pagesCount;
 
     this.updateStatusBar("idle", `Rendered in ${output.elapsedMs} ms`);
   }
@@ -692,6 +732,8 @@ export class PreviewController {
       state,
       message
     });
+    this.debugStatus = state;
+    this.debugStatusMessage = message;
     log(`Status: ${state} | ${message}`);
     this.updateStatusBar(state, message);
   }
@@ -882,6 +924,7 @@ export class PreviewController {
       autoScroll: getAutoScrollToHighlight(),
       hysteresisScore: getHighlightHysteresisScore()
     });
+    this.debugLastCursor = cursor;
     log(`Cursor: ${cursor.filePath}:${cursor.line}:${cursor.column}`);
   }
 
@@ -893,6 +936,7 @@ export class PreviewController {
     void this.previewPanel.webview.postMessage({
       type: "cursorClear"
     });
+    this.debugLastCursor = undefined;
     log("Cursor highlight cleared.");
   }
 
@@ -917,7 +961,9 @@ export class PreviewController {
 
       editor.selection = new vscode.Selection(start, end);
       editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+      this.debugLastReveal = { href, success: true };
     } catch {
+      this.debugLastReveal = { href, success: false };
       log(`Preview click navigation failed: href=${href}`);
     }
   }
@@ -978,35 +1024,4 @@ export class PreviewController {
     return String(error);
   }
 
-  private async collectArtifacts(scoreFilePath: string): Promise<Array<{ path: string; type: string; mtime: number }>> {
-    const dir = path.dirname(scoreFilePath);
-    const base = path.parse(scoreFilePath).name;
-    const entries = await fs.readdir(dir);
-    const candidates = entries.filter(
-      (name) =>
-        (name === `${base}.pdf` || name === `${base}.midi` || name === `${base}.mid`) ||
-        name.startsWith(`${base}-`) && (name.endsWith(".pdf") || name.endsWith(".midi") || name.endsWith(".mid") || name.endsWith(".svg"))
-    );
-
-    const artifacts: Array<{ path: string; type: string; mtime: number }> = [];
-    for (const name of candidates) {
-      const fullPath = path.join(dir, name);
-      try {
-        const stat = await fs.stat(fullPath);
-        if (!stat.isFile()) {
-          continue;
-        }
-        artifacts.push({
-          path: fullPath,
-          type: path.extname(name).slice(1).toUpperCase(),
-          mtime: stat.mtimeMs
-        });
-      } catch {
-        // Ignore files that disappear during scan.
-      }
-    }
-
-    artifacts.sort((a, b) => b.mtime - a.mtime);
-    return artifacts;
-  }
 }

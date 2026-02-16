@@ -29,5 +29,8 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Run smoke tests
+        run: xvfb-run -a npm run test:smoke
+
       - name: Package sanity check
         run: npm run package:ci

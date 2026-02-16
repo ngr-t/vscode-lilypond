@@ -18,6 +18,7 @@
     "onCommand:lilypond.export.pdf",
     "onCommand:lilypond.export.midi",
     "onCommand:lilypond.output.openLatest",
+    "onCommand:lilypond.output.refreshArtifacts",
     "onCommand:lilypond.transpose",
     "onCommand:lilypond.navigate.nextBlock",
     "onCommand:lilypond.navigate.previousBlock",
@@ -83,6 +84,10 @@
         "title": "LilyPond: Open Latest Artifacts"
       },
       {
+        "command": "lilypond.output.refreshArtifacts",
+        "title": "LilyPond: Refresh Artifacts"
+      },
+      {
         "command": "lilypond.transpose",
         "title": "LilyPond: Transpose"
       },
@@ -115,6 +120,23 @@
         "title": "LilyPond: Clear Root File"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "lilypondArtifacts",
+          "name": "LilyPond Artifacts"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "lilypond.output.refreshArtifacts",
+          "when": "view == lilypondArtifacts",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "LilyPond",
       "properties": {
@@ -180,6 +202,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test test/**/*.test.js",
+    "test:smoke": "npm run compile && npx --yes --package @vscode/test-electron node ./test/smoke/run.js",
+    "test:all": "npm run test && npm run test:smoke",
     "lint": "eslint src --ext ts",
     "package": "vsce package",
     "package:ci": "npx --yes @vscode/vsce package --allow-missing-repository"

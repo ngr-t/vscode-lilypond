@@ -25,6 +25,8 @@
 - Build once: `npm run compile`
 - Build watch: `npm run watch`
 - Tests: `npm test`
+- Smoke tests (extension host): `npm run test:smoke`
+- Full local verification: `npm run test:all`
 - Package sanity check: `npm run package:ci`
 - Lint (requires ESLint config): `npm run lint`
 
@@ -32,6 +34,7 @@
 
 - Current regression tests live in `test/`.
 - `npm test` compiles TypeScript then runs Node test runner against `test/**/*.test.js`.
+- Smoke tests run with `@vscode/test-electron` from `test/smoke/` and verify preview lifecycle and source sync flows.
 - Existing tests focus on `textedit://` parse/rewrite logic to prevent navigation regressions.
 - Matching and diagnostics parsers are also regression-tested.
 

@@ -14,6 +14,7 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - Quick fixes for selected LilyPond diagnostics (missing version, escaped-string typo, unclosed block hint)
 - Root-file workflow for include-based projects (`Set Root File` / `Clear Root File`)
 - Partial render command for selected LilyPond fragments
+- Dedicated Explorer artifacts panel (`LilyPond Artifacts`) for PDF/MIDI/SVG outputs
 - Transpose command for selection or whole document
 - Outline symbols and next/previous block navigation
 

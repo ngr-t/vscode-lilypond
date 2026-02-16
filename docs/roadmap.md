@@ -225,3 +225,43 @@ Goal: approach selected Frescobaldi-like power features.
 - Tests added or updated.
 - User-facing settings/commands documented.
 - No regressions in preview open, render, click navigation, cursor highlight.
+
+## Implementation Audit
+
+Last audited: 2026-02-16
+
+### Status Legend
+
+- `done`: implemented and validated against acceptance criteria
+- `partial`: implemented but one or more acceptance criteria need follow-up
+- `deferred`: not implemented yet
+
+### Milestone Status
+
+| Item | Status | Notes |
+|---|---|---|
+| M1-1 Improve LilyPond Diagnostics Mapping | done | Problems integration with parsed stderr diagnostics is in place. |
+| M1-2 Diagnostic Navigation Command | done | Next/previous diagnostic commands implemented. |
+| M1-3 Render Status Bar Item | done | Idle/rendering/error status bar states and timing tooltip implemented. |
+| M1-4 Preview Sync Reliability Improvements | done | Matching hysteresis + regression tests added. |
+| M2-1 Core Snippet Pack | done | Snippet pack + trigger docs (`docs/snippets.md`) added. |
+| M2-2 Basic Completion Provider | done | Curated command completion provider implemented. |
+| M2-3 Hover Docs For Core Commands | done | Hover docs for curated LilyPond commands implemented. |
+| M2-4 Quick Fixes For Frequent Errors | done | 3+ quick-fix categories implemented. |
+| M3-1 Include Graph Resolver | done | Include graph parsing with missing/cycle diagnostics implemented. |
+| M3-2 Root-File Selection | done | Set/clear root file commands with persisted workspace state implemented. |
+| M3-3 Partial Render Support | done | Selection-based partial render command with explicit status label implemented. |
+| M3-4 File Watch Integration For Includes | done | Include-related file watcher triggers root rerender; watcher lifecycle managed. |
+| M4-1 PDF Export Command | done | PDF export + open flow implemented. |
+| M4-2 MIDI Export And Play Command | done | MIDI export + open flow implemented with failure guidance. |
+| M4-3 Output Artifacts Panel | done | Dedicated Explorer tree view (`lilypondArtifacts`) added with refresh + click-to-open; quick-pick command retained. |
+| M5-1 Transposition Command (Selection/Document) | partial | Selection/document transpose implemented; non-musical region preservation is heuristic and should be hardened. |
+| M5-2 Structure Outline Provider | done | Document symbol provider for key blocks/assignments implemented. |
+| M5-3 Navigation Commands By Musical Blocks | done | Next/previous block navigation commands implemented with parsing tests. |
+| Q-1 Unit Test Expansion | done | Regression suite expanded to matching, diagnostics, include graph, structure, transposition helpers. |
+| Q-2 Integration Smoke Tests | done | Extension-host smoke harness (`test/smoke`) now validates preview open/render, click navigation, cursor sync, and refresh flows; CI runs it on PRs/pushes. |
+| Q-3 Release Workflow | done | CI/release workflows, changelog, and release docs are in place, with packaging sanity checks integrated in CI. |
+
+### Follow-Up Priorities
+
+1. Upgrade `M5-1` transposition with parser-aware transforms to preserve non-musical regions robustly.

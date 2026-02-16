@@ -1,12 +1,14 @@
 # Repository Guidelines
 
-This repository contains a VS Code extension scaffold for LilyPond language support and a preview command.
+This repository contains a VS Code extension for LilyPond authoring, live preview, diagnostics, navigation, and export workflows.
 
 ## Project Structure & Module Organization
 
-- Source code: `src/` (entrypoint in `src/extension.ts`; preview/render/webview split into modules under `src/preview`, `src/render`, `src/webview`, `src/sync`, `src/config`).
+- Source code: `src/` (entrypoint in `src/extension.ts`; major modules: `preview/`, `render/`, `language/`, `output/`, `sync/`, `commands/`, `config/`).
 - Compiled output: `dist/` (generated JS used by VS Code via `main` in `package.json`).
 - Syntax + language config: `syntaxes/` and `language-configuration.json`.
+- Snippets: `snippets/lilypond.code-snippets`.
+- Docs: `docs/` (`architecture.md`, `development.md`, `troubleshooting.md`, `roadmap.md`, `release.md`).
 - Editor/debug config: `.vscode/` (launch config for Extension Development Host).
 
 ## Build, Test, and Development Commands
@@ -14,10 +16,14 @@ This repository contains a VS Code extension scaffold for LilyPond language supp
 - `npm run compile`: compile TypeScript (`src/`) into `dist/`.
 - `npm run watch`: compile in watch mode while developing.
 - `npm test`: compile and run regression tests in `test/` with Node's test runner.
+- `npm run test:smoke`: run extension-host smoke tests in `test/smoke/` (requires npm registry access for `@vscode/test-electron` via `npx`).
+- `npm run test:all`: run unit + smoke tests.
 - `npm run lint`: lint TypeScript sources with ESLint.
 - `npm run package`: package the extension with `vsce package` (requires `vsce` availability).
 - Run in VS Code: use the `Run LilyPond Extension` launch config (F5) to start an Extension Development Host.
-- Preview commands: `LilyPond: Open Preview`, `LilyPond: Refresh Preview Now`, `LilyPond: Toggle Auto Refresh`.
+- Preview commands: `LilyPond: Open Preview`, `LilyPond: Refresh Preview Now`, `LilyPond: Render Selection In Preview`, `LilyPond: Toggle Auto Refresh`.
+- Output commands: `LilyPond: Export PDF`, `LilyPond: Export MIDI`, `LilyPond: Open Latest Artifacts`.
+- Navigation commands: `LilyPond: Next Diagnostic`, `LilyPond: Previous Diagnostic`, `LilyPond: Next Block`, `LilyPond: Previous Block`.
 - Preview settings: configure under `lilypond.preview.*` (binary path, refresh mode, debounce, and throttling).
 
 ## Coding Style & Naming Conventions
@@ -29,7 +35,7 @@ This repository contains a VS Code extension scaffold for LilyPond language supp
 
 ## Testing Guidelines
 
-Regression tests live in `test/` and currently target compiled output in `dist/`.
+Regression tests live in `test/` and target compiled output in `dist/`. Extension smoke tests live in `test/smoke/`.
 
 - Test command: `npm test`.
 - Test file naming: `*.test.js`.
