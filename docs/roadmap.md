@@ -255,7 +255,7 @@ Last audited: 2026-02-16
 | M4-1 PDF Export Command | done | PDF export + open flow implemented. |
 | M4-2 MIDI Export And Play Command | done | MIDI export + open flow implemented with failure guidance. |
 | M4-3 Output Artifacts Panel | done | Dedicated Explorer tree view (`lilypondArtifacts`) added with refresh + click-to-open; quick-pick command retained. |
-| M5-1 Transposition Command (Selection/Document) | partial | Selection/document transpose implemented; non-musical region preservation is heuristic and should be hardened. |
+| M5-1 Transposition Command (Selection/Document) | done | Document transpose now uses top-level `\\score` block parsing with brace/comment/string-aware matching before fallback wrapping, preserving non-score regions more reliably. |
 | M5-2 Structure Outline Provider | done | Document symbol provider for key blocks/assignments implemented. |
 | M5-3 Navigation Commands By Musical Blocks | done | Next/previous block navigation commands implemented with parsing tests. |
 | Q-1 Unit Test Expansion | done | Regression suite expanded to matching, diagnostics, include graph, structure, transposition helpers. |
@@ -264,4 +264,4 @@ Last audited: 2026-02-16
 
 ### Follow-Up Priorities
 
-1. Upgrade `M5-1` transposition with parser-aware transforms to preserve non-musical regions robustly.
+1. Add targeted integration scenarios for transpose workflows in the extension-host smoke suite.
