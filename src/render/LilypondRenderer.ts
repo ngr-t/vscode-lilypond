@@ -42,11 +42,21 @@ export class LilypondRenderer {
     onSpawn: (handle: SpawnHandle) => void,
     onClearSpawn: (token: number) => void
   ): Promise<RenderOutput> {
+    return this.renderContent(document, document.getText(), token, onSpawn, onClearSpawn);
+  }
+
+  async renderContent(
+    document: vscode.TextDocument,
+    content: string,
+    token: number,
+    onSpawn: (handle: SpawnHandle) => void,
+    onClearSpawn: (token: number) => void
+  ): Promise<RenderOutput> {
     const { inputPath, outputBase, previewDir, sourceDir, lilypondPath, args, fontCacheDir } =
       await this.prepareRenderContext(document);
     const command = `${lilypondPath} ${args.map(quoteArg).join(" ")}`;
 
-    await fs.writeFile(inputPath, document.getText(), "utf8");
+    await fs.writeFile(inputPath, content, "utf8");
     await this.cleanupPreviousOutputs(previewDir);
 
     const startedAt = Date.now();
@@ -90,6 +100,36 @@ export class LilypondRenderer {
       stderr,
       elapsedMs: Date.now() - startedAt
     };
+  }
+
+  async exportPdf(document: vscode.TextDocument): Promise<string> {
+    const { inputPath, sourceDir, lilypondPath, fontCacheDir } = await this.prepareRenderContext(document);
+    const sourceBaseName = path.parse(document.fileName).name;
+    const outputBase = path.join(sourceDir, sourceBaseName);
+
+    await fs.writeFile(inputPath, document.getText(), "utf8");
+
+    await runLilypond(
+      {
+        token: 0,
+        lilypondPath,
+        args: ["-o", outputBase, "-I", sourceDir, inputPath],
+        cwd: sourceDir,
+        fontCacheDir,
+        uri: document.uri.toString(),
+        version: document.version
+      },
+      () => {
+        // Export flow does not use render cancellation tracking.
+      },
+      () => {
+        // Export flow does not use render cancellation tracking.
+      }
+    );
+
+    const pdfPath = `${outputBase}.pdf`;
+    await fs.stat(pdfPath);
+    return pdfPath;
   }
 
   private async prepareRenderContext(document: vscode.TextDocument): Promise<{

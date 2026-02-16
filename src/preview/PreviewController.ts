@@ -21,7 +21,7 @@ import { getBasePreviewHtml } from "../webview/template";
 const PREVIEW_TYPE = "lilypondPreview";
 const PREVIEW_TITLE = "LilyPond Preview";
 
-type RenderReason = "open" | "manual" | "typing" | "save" | "editorSwitch";
+type RenderReason = "open" | "manual" | "typing" | "save" | "editorSwitch" | "selection";
 
 type ScheduledRender = {
   timer: NodeJS.Timeout;
@@ -106,6 +106,45 @@ export class PreviewController {
 
       this.ensurePreviewPanel(true);
       await this.requestRender(document, "manual", true);
+    });
+
+    const renderSelection = vscode.commands.registerCommand("lilypond.preview.renderSelection", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !this.isLilyPondDocument(editor.document)) {
+        void vscode.window.showInformationMessage("Open a LilyPond file to render a selection.");
+        return;
+      }
+
+      const selectedText = editor.document.getText(editor.selection).trim();
+      if (!selectedText) {
+        void vscode.window.showInformationMessage("Select a LilyPond fragment to render.");
+        return;
+      }
+
+      const renderText = this.buildPartialRenderText(selectedText);
+      this.ensurePreviewPanel(true);
+      this.previewDocumentUri = editor.document.uri.toString();
+      await this.startRender(editor.document, "selection", renderText, "Partial");
+    });
+
+    const exportPdf = vscode.commands.registerCommand("lilypond.export.pdf", async () => {
+      const current = this.getPreviewDocument() ?? this.getCurrentLilyPondDocument();
+      const document = await this.getRenderTargetDocument(current);
+      if (!document) {
+        void vscode.window.showInformationMessage("Open a LilyPond file to export PDF.");
+        return;
+      }
+
+      try {
+        this.postStatus("updating", `Exporting PDF for ${path.basename(document.fileName)}...`);
+        const pdfPath = await this.renderer.exportPdf(document);
+        this.postStatus("idle", `PDF exported: ${path.basename(pdfPath)}`);
+        await vscode.env.openExternal(vscode.Uri.file(pdfPath));
+      } catch (error) {
+        const message = this.renderErrorMessage(error);
+        this.postStatus("error", message);
+        void vscode.window.showErrorMessage(`LilyPond PDF export failed: ${message}`);
+      }
     });
 
     const toggleAutoRefresh = vscode.commands.registerCommand("lilypond.preview.toggleAutoRefresh", async () => {
@@ -240,6 +279,8 @@ export class PreviewController {
     this.context.subscriptions.push(
       openPreview,
       refreshNow,
+      renderSelection,
+      exportPdf,
       toggleAutoRefresh,
       setRootFile,
       clearRootFile,
@@ -472,7 +513,12 @@ export class PreviewController {
     await this.startRender(document, reason);
   }
 
-  private async startRender(document: vscode.TextDocument, reason: RenderReason): Promise<void> {
+  private async startRender(
+    document: vscode.TextDocument,
+    reason: RenderReason,
+    contentOverride?: string,
+    statusPrefix?: string
+  ): Promise<void> {
     if (!this.previewPanel) {
       return;
     }
@@ -491,28 +537,39 @@ export class PreviewController {
     this.cancelInFlightRender();
 
     try {
-      const output = await this.renderer.renderDocument(
-        document,
-        token,
-        ({ process, uri: renderUri, version, token: renderToken }) => {
-          this.inFlightRender = {
-            token: renderToken,
-            uri: renderUri,
-            version,
-            process
-          };
-        },
-        (clearedToken) => {
-          this.clearInFlight(clearedToken);
-        }
-      );
+      const onSpawn = ({
+        process,
+        uri: renderUri,
+        version,
+        token: renderToken
+      }: {
+        process: ChildProcessWithoutNullStreams;
+        uri: string;
+        version: number;
+        token: number;
+      }): void => {
+        this.inFlightRender = {
+          token: renderToken,
+          uri: renderUri,
+          version,
+          process
+        };
+      };
+
+      const onClear = (clearedToken: number): void => {
+        this.clearInFlight(clearedToken);
+      };
+
+      const output = contentOverride
+        ? await this.renderer.renderContent(document, contentOverride, token, onSpawn, onClear)
+        : await this.renderer.renderDocument(document, token, onSpawn, onClear);
 
       if (!this.previewPanel || token !== this.renderToken || this.canceledTokens.has(token)) {
         return;
       }
 
       this.lastCompletedVersionByUri.set(uri, document.version);
-      this.postUpdate(output, document.fileName);
+      this.postUpdate(output, document.fileName, statusPrefix);
       this.applyDiagnosticsFromOutput(document.uri, output.stderr);
       await this.applyIncludeDiagnostics(document.fileName);
       log(`Render success: token=${token} pages=${output.pagesCount} elapsedMs=${output.elapsedMs}`);
@@ -543,7 +600,7 @@ export class PreviewController {
     }
   }
 
-  private postUpdate(output: RenderOutput, fileName: string): void {
+  private postUpdate(output: RenderOutput, fileName: string, statusPrefix?: string): void {
     if (!this.previewPanel) {
       return;
     }
@@ -553,12 +610,21 @@ export class PreviewController {
       title: path.basename(fileName),
       pagesHtml: output.pagesHtml,
       pagesCount: output.pagesCount,
-      statusText: `Rendered ${output.pagesCount === 1 ? "1 page" : `${output.pagesCount} pages`} in ${output.elapsedMs} ms`,
+      statusText: `${statusPrefix ? `${statusPrefix}: ` : ""}Rendered ${output.pagesCount === 1 ? "1 page" : `${output.pagesCount} pages`} in ${output.elapsedMs} ms`,
       command: output.command,
       stderr: output.stderr
     });
 
     this.updateStatusBar("idle", `Rendered in ${output.elapsedMs} ms`);
+  }
+
+  private buildPartialRenderText(selectedText: string): string {
+    const hasTopLevelBlock = /\\score\\s*\\{|\\relative\\s+[a-g][,']*\\s*\\{|\\new\\s+\\w+/m.test(selectedText);
+    if (hasTopLevelBlock) {
+      return selectedText;
+    }
+
+    return `\\\\relative c' {\\n${selectedText}\\n}`;
   }
 
   private postStatus(state: "idle" | "updating" | "error", message: string): void {
