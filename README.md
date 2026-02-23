@@ -2,21 +2,22 @@
 
 A VS Code extension for LilyPond authoring with live SVG preview and bidirectional source/preview navigation.
 
-## Features
+## What You Can Do Now
 
-- LilyPond language registration for `.ly`, `.ily`, `.lyi`
-- LilyPond preview panel rendered from the LilyPond CLI
-- Click in preview to jump to source location
-- Move cursor in source to highlight corresponding preview object
-- Configurable preview refresh behavior (`idleAndSave`, `saveOnly`, `manual`, `live`)
-- Curated command completion for common `\\` LilyPond keywords
-- Hover docs for core LilyPond commands
-- Quick fixes for selected LilyPond diagnostics (missing version, escaped-string typo, unclosed block hint)
-- Root-file workflow for include-based projects (`Set Root File` / `Clear Root File`)
-- Partial render command for selected LilyPond fragments
-- Dedicated Explorer artifacts panel (`LilyPond Artifacts`) for PDF/MIDI/SVG outputs
-- Transpose command for selection or whole document
-- Outline symbols and next/previous block navigation
+- Edit LilyPond files with language support for `.ly`, `.ily`, `.lyi`
+- Use snippets, completion, and hover docs for common LilyPond commands
+- Get LilyPond diagnostics in Problems and jump to next/previous issues
+- Open a live SVG preview rendered by the LilyPond CLI
+- Click objects in preview to jump to source
+- Move the source cursor to highlight matching objects in preview
+- Control refresh behavior (`idleAndSave`, `saveOnly`, `manual`, `live`) with debounce/throttling settings
+- Render only selected fragments in preview (`Render Selection In Preview`)
+- Work with include-based projects using root-file selection and include diagnostics
+- Export score outputs as PDF and MIDI
+- Browse generated artifacts in the `LilyPond Artifacts` Explorer panel or `LilyPond: Open Latest Artifacts` quick picker
+- Transpose selected music or whole documents
+- Navigate musical structure via outline symbols and next/previous block commands
+- Track render state from preview status + status bar (idle/updating/error)
 
 ## Requirements
 
@@ -44,6 +45,7 @@ A VS Code extension for LilyPond authoring with live SVG preview and bidirection
 - `LilyPond: Export PDF`
 - `LilyPond: Export MIDI`
 - `LilyPond: Open Latest Artifacts`
+- `LilyPond: Refresh Artifacts`
 - `LilyPond: Transpose`
 - `LilyPond: Next Block`
 - `LilyPond: Previous Block`
